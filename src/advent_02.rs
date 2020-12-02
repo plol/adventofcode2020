@@ -11,23 +11,13 @@ struct SpecAndPassword {
 impl std::str::FromStr for SpecAndPassword {
     type Err = String;
     fn from_str(s: &str) -> Result<Self, Self::Err> {
-        if let [range, letter_and_colon, passwordstr] = s.split(' ').collect::<Vec<_>>()[..] {
-            if let [n1str, n2str] = range.split('-').collect::<Vec<_>>()[..] {
-                if let Ok(n1) = n1str.parse::<usize>() {
-                    if let Ok(n2) = n2str.parse() {
-                        if let Some(letter) = letter_and_colon.chars().nth(0) {
-                            return Ok(SpecAndPassword {
-                                n1: n1,
-                                n2: n2,
-                                letter: letter,
-                                password: passwordstr.to_string(),
-                            });
-                        }
-                    }
-                }
-            }
-        }
-        Err("No".to_string())
+        let (n1, n2, letter, password) = codegen_stuff::scan!("{}-{} {}: {}", s);
+        Ok(SpecAndPassword {
+            n1: n1,
+            n2: n2,
+            letter: letter,
+            password: password,
+        })
     }
 }
 

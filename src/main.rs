@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+extern crate codegen_stuff;
+
 use std;
 
 mod common;
