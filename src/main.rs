@@ -9,6 +9,7 @@ use common::read_file;
 
 mod advent_01;
 mod advent_02;
+mod advent_03;
 
 fn run_advent<A>(input: String, expected1: &str, expected2: &str)
 where
@@ -38,4 +39,5 @@ where
 fn main() {
     run_advent::<advent_01::Advent>(read_file("inputs/input01"), "1016131", "276432018");
     run_advent::<advent_02::Advent>(read_file("inputs/input02"), "398", "562");
+    run_advent::<advent_03::Advent>(read_file("inputs/input03"), "167", "736527114");
 }
