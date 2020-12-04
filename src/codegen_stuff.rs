@@ -16,14 +16,14 @@ impl syn::parse::Parse for ScanInput {
         let pattern = input.parse()?;
         input.parse::<syn::Token![,]>()?;
         Ok(ScanInput {
-            pattern: pattern,
+            pattern,
             to_parse: input.parse()?,
         })
     }
 }
 
 #[proc_macro]
-pub fn scan(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+pub fn scan_strs(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ScanInput { pattern, to_parse } = syn::parse_macro_input!(input as ScanInput);
     let value = pattern.value();
     let pattern_bytes = value.as_bytes();
@@ -48,11 +48,11 @@ pub fn scan(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
                         while input_bytes[i] != #end {
                             i += 1;
                         }
-                        let #output = (#to_parse)[match_start..i].parse().unwrap();
+                        let #output = &(#to_parse)[match_start..i];
                     });
                 } else {
                     parse_blobs.extend(quote! {
-                        let #output = (#to_parse)[i..].parse().unwrap();
+                        let #output = &(#to_parse)[i..];
                     });
                 }
                 i += 2;
@@ -79,6 +79,34 @@ pub fn scan(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
             let mut match_start;
             #parse_blobs
             (#(#outputs),*)
+        }
+    })
+    .into()
+}
+
+#[proc_macro]
+pub fn scan(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
+    let ScanInput { pattern, to_parse } = syn::parse_macro_input!(input as ScanInput);
+
+    let outputs = pattern
+        .value()
+        .as_bytes()
+        .iter()
+        .filter(|c| **c == b'{')
+        .enumerate()
+        .map(|(i, _)| format_ident!("output{}", format!("{}", i)))
+        .collect::<Vec<_>>();
+
+    let outputs_parsed = outputs.iter().map(|output| {
+        quote! {
+            #output.parse().unwrap()
+        }
+    });
+
+    (quote! {
+        {
+            let (#(#outputs),*) = codegen_stuff::scan_strs!(#pattern, #to_parse);
+            (#(#outputs_parsed),*)
         }
     })
     .into()
