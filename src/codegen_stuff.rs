@@ -22,61 +22,78 @@ impl syn::parse::Parse for ScanInput {
     }
 }
 
+fn parse_pattern(pattern: &String) -> Vec<&str> {
+    let pattern_bytes = pattern.as_bytes();
+    let mut i = 0;
+    let mut result = vec![];
+    let mut before = 0;
+    while i < pattern_bytes.len() {
+        if pattern_bytes[i] == b'{' {
+            if pattern_bytes[i + 1] != b'}' {
+                panic!();
+            }
+            if before != i {
+                result.push(&pattern[before..i]);
+            }
+            result.push(&pattern[i..i + 2]);
+            i += 2;
+            before = i;
+        } else {
+            i += 1;
+        }
+    }
+    if before != i {
+        result.push(&pattern[before..]);
+    }
+    result
+}
+
 #[proc_macro]
 pub fn scan_strs(input: proc_macro::TokenStream) -> proc_macro::TokenStream {
     let ScanInput { pattern, to_parse } = syn::parse_macro_input!(input as ScanInput);
     let value = pattern.value();
-    let pattern_bytes = value.as_bytes();
 
     let mut parse_blobs = quote! {};
 
     let mut outputs = vec![];
 
-    let mut i = 0;
-    while i < pattern_bytes.len() {
-        match pattern_bytes[i] {
-            b'{' => {
-                if pattern_bytes[i + 1] != b'}' {
-                    panic!();
-                }
-                let output = format_ident!("output{}", format!("{}", i));
+    let parsed_pattern = parse_pattern(&value);
+    for p in 0..parsed_pattern.len() {
+        match parsed_pattern[p] {
+            "{}" => {
+                let output = format_ident!("output{}", format!("{}", p));
                 outputs.push(output.clone());
-                if i < pattern_bytes.len() - 2 {
-                    let end = pattern_bytes[i + 2];
+                if p < parsed_pattern.len() - 1 {
+                    let end = parsed_pattern[p + 1];
                     parse_blobs.extend(quote! {
-                        match_start = i;
-                        while input_bytes[i] != #end {
-                            i += 1;
-                        }
-                        let #output = &(#to_parse)[match_start..i];
+                        let match_length = input[i..].find(#end).unwrap();
+                        let #output = &(#to_parse)[i..i + match_length];
+                        i += match_length;
                     });
                 } else {
                     parse_blobs.extend(quote! {
                         let #output = &(#to_parse)[i..];
                     });
                 }
-                i += 2;
             }
-            b => {
+            s => {
+                let len = s.len();
                 parse_blobs.extend(quote! {
-                    if input_bytes[i] == #b {
-                        i += 1;
+                    if i + #len <= input.len() && &input[i..i+#len] == #s {
+                        i += #len;
                     } else {
                         panic!();
                     }
                 });
-                i += 1;
             }
         }
     }
 
     (quote! {
         {
-            let mut i = 0;
-            let input_bytes = (#to_parse).as_bytes();
+            let input = (#to_parse);
 
             let mut i = 0;
-            let mut match_start;
             #parse_blobs
             (#(#outputs),*)
         }
