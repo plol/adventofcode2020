@@ -14,6 +14,7 @@ mod advent_04;
 mod advent_05;
 mod advent_06;
 mod advent_07;
+mod advent_08;
 
 fn run_advent<A>(input: String, expected1: &str, expected2: &str)
 where
@@ -48,4 +49,5 @@ fn main() {
     run_advent::<advent_05::Advent>(read_file("inputs/input05"), "998", "676");
     run_advent::<advent_06::Advent>(read_file("inputs/input06"), "6590", "3288");
     run_advent::<advent_07::Advent>(read_file("inputs/input07"), "278", "45157");
+    run_advent::<advent_08::Advent>(read_file("inputs/input08"), "1420", "1245");
 }
